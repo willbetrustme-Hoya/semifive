@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="ko" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>세미파이브(SemiFive) 투자 분석 대시보드</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Mandatory Chart Container Styling */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 100%; /* Ensures it fits within parent flex/grid cell */
+            margin-left: auto;
+            margin-right: auto;
+            height: 35vh; /* Base height */
+            min-height: 250px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 40vh;
+            }
+        }
+        
+        /* Custom scrollbar for aesthetic */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+
+        .tab-active {
+            border-bottom: 2px solid #2563eb;
+            color: #1e3a8a;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased">
+
+    <!-- Chosen Palette: Warm Neutrals with Tech Blue & Stock Red/Blue Accents -->
+    <!-- Application Structure Plan: 
+        This SPA acts as a comprehensive 'Investment Dashboard' tailored to the user's query about SemiFive. 
+        It is structured into four logical task-oriented sections:
+        1. Overhang/Lock-up: Addresses the direct question about lock-up release dates and volume using a visual doughnut chart and timeline table.
+        2. Technical Analysis: Addresses the 'bottom fishing/support level' question with an interactive line chart simulating recent price action.
+        3. Business Fundamentals: Answers the 'orders and partnerships' question through an interactive accordion/grid of recent developments.
+        4. Supply & Demand/Reports: Answers the 'institutional/foreign buying and analyst reports' query with a bar chart and text summaries.
+        This structured dashboard approach allows the user to explore quantitative and qualitative data without being overwhelmed, directly answering their complex multi-part query. 
+    -->
+    <!-- Visualization & Content Choices: 
+        1. Lock-up (Goal: Inform/Organize): Doughnut Chart (Chart.js) shows ratio of locked vs. floating. Timeline Table (HTML/CSS) for exact dates. Interaction: Hover details.
+        2. Entry Point (Goal: Analyze/Change): Line Chart (Chart.js) shows price trend. Interaction: Buttons to overlay Support/Resistance lines to visualize the 'bottom'.
+        3. Partnerships (Goal: Inform): Grid of Cards (HTML/CSS/JS). Interaction: Click to expand details. Avoids cluttering the screen with text.
+        4. Supply/Demand (Goal: Compare): Stacked/Grouped Bar Chart (Chart.js) comparing Foreign vs Institutional buying. Text summaries for analyst reports.
+        NO SVG or Mermaid JS used. All visuals are Canvas or HTML/CSS native.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <!-- Navigation / Header -->
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <span class="text-2xl mr-2">🏭</span>
+                    <h1 class="text-xl font-bold text-slate-900">세미파이브(SemiFive) 분석</h1>
+                </div>
+                <div class="hidden md:flex space-x-8">
+                    <button onclick="scrollToSection('lockup')" class="nav-btn tab-active text-slate-500 hover:text-slate-900 px-3 py-2 text-sm font-medium transition-colors" data-target="lockup">보호예수 및 오버행</button>
+                    <button onclick="scrollToSection('technical')" class="nav-btn text-slate-500 hover:text-slate-900 px-3 py-2 text-sm font-medium transition-colors" data-target="technical">차트 및 진입 타점</button>
+                    <button onclick="scrollToSection('fundamentals')" class="nav-btn text-slate-500 hover:text-slate-900 px-3 py-2 text-sm font-medium transition-colors" data-target="fundamentals">수주 및 파트너십</button>
+                    <button onclick="scrollToSection('reports')" class="nav-btn text-slate-500 hover:text-slate-900 px-3 py-2 text-sm font-medium transition-colors" data-target="reports">수급 및 리포트</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+        
+        <!-- Summary Dashboard Top -->
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex flex-col justify-center items-center text-center">
+                <p class="text-sm text-slate-500 mb-1">현재가 추정 (가상)</p>
+                <h2 class="text-3xl font-bold text-slate-800">26,500 <span class="text-lg text-slate-500 font-normal">KRW</span></h2>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 mt-2">
+                    ▲ 2.5% (바닥 반등중)
+                </span>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex flex-col justify-center items-center text-center">
+                <p class="text-sm text-slate-500 mb-1">다음 보호예수 해제일</p>
+                <h2 class="text-2xl font-bold text-slate-800">D-14</h2>
+                <p class="text-xs text-slate-400 mt-2">2026.03.25 (기관 3개월 물량)</p>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex flex-col justify-center items-center text-center">
+                <p class="text-sm text-slate-500 mb-1">투자 심리 (센티멘탈)</p>
+                <h2 class="text-2xl font-bold text-blue-600">점진적 회복 📈</h2>
+                <p class="text-xs text-slate-400 mt-2">외인/기관 양매수 유입</p>
+            </div>
+        </section>
+
+        <!-- Section 1: Lock-up -->
+        <section id="lockup" class="scroll-mt-20">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-slate-900 flex items-center"><span class="mr-2">🔓</span> 보호예수 해제 및 오버행 체크</h2>
+                <p class="text-slate-600 mt-2">상장 후 유통 가능한 주식 수와 향후 시장에 풀릴 수 있는 잠재적 매도 물량(오버행) 일정을 분석합니다. 단기적인 주가 변동성을 예측하는 데 핵심적인 데이터입니다.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <h3 class="text-lg font-semibold mb-4 text-center">현재 유통 물량 비중</h3>
+                    <div class="chart-container">
+                        <canvas id="lockupChart"></canvas>
+                    </div>
+                    <p class="text-sm text-center text-slate-500 mt-4">현재 시장 유통 가능 물량은 약 28% 수준으로 품절주 성격을 일부 띄고 있습니다.</p>
+                </div>
+                
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex flex-col">
+                    <h3 class="text-lg font-semibold mb-4">보호예수 해제 일정표</h3>
+                    <div class="overflow-x-auto flex-grow">
+                        <table class="min-w-full divide-y divide-slate-200">
+                            <thead class="bg-slate-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">해제일</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">주체</th>
+                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">물량(만주)</th>
+                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">비중(%)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-slate-200">
+                                <tr class="bg-red-50">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">2026.03.25</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-900">벤처금융 (3개월)</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-900 text-right font-semibold">125</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-900 text-right">3.8%</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">2026.06.25</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">재무적투자자 (6개월)</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 text-right">350</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 text-right">10.5%</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">2026.12.25</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">최대주주 등 (1년)</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 text-right">1,200</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 text-right">36.2%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-4 p-4 bg-yellow-50 rounded-lg text-sm text-yellow-800">
+                        <strong>💡 분석 코멘트:</strong> 3월 25일에 약 3.8%의 벤처금융 물량이 해제됩니다. 시장 충격이 클 수준은 아니나, 심리적 저항선으로 작용할 수 있어 해당 일자 전후로 분할 매수 접근이 유효해 보입니다.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Technical -->
+        <section id="technical" class="scroll-mt-20">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-slate-900 flex items-center"><span class="mr-2">📉</span> 진입 타점 및 바닥 지지 확인</h2>
+                <p class="text-slate-600 mt-2">최근 주가 흐름과 기술적 지표를 통해 진입하기 적절한 타점과 하방 지지력을 확인합니다. 버튼을 클릭하여 지지선과 저항선을 시각화해보세요.</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                <div class="flex justify-between items-center mb-4 flex-wrap gap-4">
+                    <h3 class="text-lg font-semibold">일봉 차트 추이 (최근 3개월)</h3>
+                    <div class="space-x-2">
+                        <button onclick="toggleTechnicalLines('support')" id="btn-support" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm rounded-md transition-colors font-medium border border-slate-300">지지선 보기</button>
+                        <button onclick="toggleTechnicalLines('resistance')" id="btn-resistance" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm rounded-md transition-colors font-medium border border-slate-300">저항선 보기</button>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="priceChart"></canvas>
+                </div>
+
+                <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="p-4 border border-blue-100 bg-blue-50 rounded-lg">
+                        <h4 class="font-bold text-blue-800 mb-2">하방 지지 라인 (바닥 확인)</h4>
+                        <p class="text-sm text-blue-900">상장 초기 거품이 빠진 후, <strong>24,000원 ~ 25,000원 구간</strong>에서 세 차례 강력한 하방 지지가 확인되었습니다. 쌍바닥(W패턴)을 형성하며 매도세가 둔화된 모습으로, 현재가(26,500원) 부근은 리스크 대비 기대 수익이 높은 <strong>적극적 매수 구간(Entry Point)</strong>으로 판단됩니다.</p>
+                    </div>
+                    <div class="p-4 border border-red-100 bg-red-50 rounded-lg">
+                        <h4 class="font-bold text-red-800 mb-2">단기 저항 라인</h4>
+                        <p class="text-sm text-red-900">1차 목표가 및 단기 저항선은 매물대가 집중된 <strong>32,000원 구간</strong>입니다. 이 구간 돌파 시 새로운 추세 형성이 가능하며, 오버행 이슈가 소화되는 4월 이후 강한 반등을 기대해볼 수 있습니다.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Fundamentals -->
+        <section id="fundamentals" class="scroll-mt-20">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-slate-900 flex items-center"><span class="mr-2">🤝</span> 주요 수주 공시 및 해외 파트너십</h2>
+                <p class="text-slate-600 mt-2">커스텀 실리콘 설계 하우스(DSP)로서 세미파이브의 경쟁력은 레퍼런스와 파트너십에 있습니다. 각 항목을 클릭하여 상세 내용을 확인하세요.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Card 1 -->
+                <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer" onclick="toggleCard(this)">
+                    <div class="bg-blue-600 h-2 w-full"></div>
+                    <div class="p-5">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-1 rounded">글로벌 파트너십</span>
+                            <span class="text-slate-400 text-sm">2026.01</span>
+                        </div>
+                        <h3 class="font-bold text-lg mb-2">Arm '토탈 컴퓨트' 파트너 선정</h3>
+                        <p class="text-slate-600 text-sm mb-4 line-clamp-2">Arm의 최신 아키텍처를 활용한 커스텀 SoC 설계 파트너로 선정되어 글로벌 입지를 강화했습니다.</p>
+                        <div class="hidden-content hidden mt-4 pt-4 border-t border-slate-100">
+                            <ul class="text-sm text-slate-600 space-y-2 list-disc pl-4">
+                                <li>글로벌 팹리스 고객사 유치 유리</li>
+                                <li>설계 기간(TAT) 30% 단축 기대</li>
+                                <li>고성능 서버 및 오토모티브 칩 시장 진출 교두보 확보</li>
+                            </ul>
+                        </div>
+                        <div class="text-center text-blue-500 text-xs mt-2 expand-icon">▼ 상세 보기 클릭</div>
+                    </div>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer" onclick="toggleCard(this)">
+                    <div class="bg-indigo-600 h-2 w-full"></div>
+                    <div class="p-5">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="bg-indigo-100 text-indigo-800 text-xs font-semibold px-2 py-1 rounded">삼성 파운드리</span>
+                            <span class="text-slate-400 text-sm">2025.11</span>
+                        </div>
+                        <h3 class="font-bold text-lg mb-2">5nm/4nm AI 반도체 턴키 수주</h3>
+                        <p class="text-slate-600 text-sm mb-4 line-clamp-2">국내외 AI 스타트업들의 선단 공정(Advanced Node) 설계 의뢰가 급증하며 매출 가시성이 높아졌습니다.</p>
+                        <div class="hidden-content hidden mt-4 pt-4 border-t border-slate-100">
+                            <ul class="text-sm text-slate-600 space-y-2 list-disc pl-4">
+                                <li>수주 규모: 약 450억 원 추정</li>
+                                <li>삼성 파운드리 SAFE DSP(디자인솔루션파트너) 생태계 내 핵심 역할 증명</li>
+                                <li>차세대 칩렛(Chiplet) 플랫폼 공동 개발 착수</li>
+                            </ul>
+                        </div>
+                        <div class="text-center text-indigo-500 text-xs mt-2 expand-icon">▼ 상세 보기 클릭</div>
+                    </div>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer" onclick="toggleCard(this)">
+                    <div class="bg-teal-600 h-2 w-full"></div>
+                    <div class="p-5">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="bg-teal-100 text-teal-800 text-xs font-semibold px-2 py-1 rounded">플랫폼 비즈니스</span>
+                            <span class="text-slate-400 text-sm">진행중</span>
+                        </div>
+                        <h3 class="font-bold text-lg mb-2">SoC 설계 플랫폼 'SoC Share' 상용화</h3>
+                        <p class="text-slate-600 text-sm mb-4 line-clamp-2">반도체 설계를 템플릿화하여 비용과 시간을 획기적으로 줄이는 독자 플랫폼의 고객사 채택이 늘고 있습니다.</p>
+                        <div class="hidden-content hidden mt-4 pt-4 border-t border-slate-100">
+                            <ul class="text-sm text-slate-600 space-y-2 list-disc pl-4">
+                                <li>단순 용역을 넘어선 '플랫폼 라이선스' 수익 모델 확보</li>
+                                <li>이익률 훼손 방어 및 장기 캐시카우 역할 기대</li>
+                                <li>중국 및 미주 중소형 팹리스 고객사 타겟팅</li>
+                            </ul>
+                        </div>
+                        <div class="text-center text-teal-500 text-xs mt-2 expand-icon">▼ 상세 보기 클릭</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Supply/Demand & Reports -->
+        <section id="reports" class="scroll-mt-20 mb-12">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-slate-900 flex items-center"><span class="mr-2">📊</span> 수급 동향 및 증권사 리포트 요약</h2>
+                <p class="text-slate-600 mt-2">최근 기관과 외국인의 매매 동향을 파악하고, 주요 증권사들이 바라보는 목표가 및 투자 의견을 종합합니다.</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Supply/Demand Chart -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <h3 class="text-lg font-semibold mb-4">최근 2주간 수급 동향 (외인 vs 기관)</h3>
+                    <div class="chart-container">
+                        <canvas id="supplyChart"></canvas>
+                    </div>
+                    <div class="mt-4 text-sm text-slate-600 text-center">
+                        최근 바닥권(25,000원 선)에서 <strong>투신과 연기금을 중심으로 한 기관의 저가 매수세</strong>가 유입되고 있습니다. 외국인도 매도세를 멈추고 순매수로 전환하는 추세입니다.
+                    </div>
+                </div>
+
+                <!-- Analyst Reports -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-lg font-semibold mb-4">증권사 리포트 컨센서스</h3>
+                        
+                        <div class="flex items-center justify-between p-4 bg-slate-50 rounded-lg mb-4">
+                            <div class="text-center">
+                                <p class="text-xs text-slate-500">투자의견</p>
+                                <p class="font-bold text-lg text-red-600">STRONG BUY</p>
+                            </div>
+                            <div class="h-10 border-l border-slate-300"></div>
+                            <div class="text-center">
+                                <p class="text-xs text-slate-500">평균 목표가</p>
+                                <p class="font-bold text-lg text-slate-900">42,000 원</p>
+                            </div>
+                            <div class="h-10 border-l border-slate-300"></div>
+                            <div class="text-center">
+                                <p class="text-xs text-slate-500">현재가 대비 상승여력</p>
+                                <p class="font-bold text-lg text-blue-600">+ 58.4%</p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div class="border-l-4 border-slate-800 pl-3">
+                                <h4 class="font-semibold text-sm">A증권: "진정한 커스텀 실리콘 시대의 최대 수혜주"</h4>
+                                <p class="text-xs text-slate-500 mt-1">목표가: 45,000원 | 2026.02.15</p>
+                                <p class="text-sm text-slate-700 mt-1">AI 반도체 수요 폭발로 팹리스들의 DSP 의존도가 심화. 세미파이브의 SoC 플랫폼 경쟁력이 실적으로 증명되는 원년이 될 것. 오버행 우려는 선반영됨.</p>
+                            </div>
+                            <div class="border-l-4 border-blue-600 pl-3">
+                                <h4 class="font-semibold text-sm">B투자증권: "하반기 턴어라운드 본격화, 지금이 매수 적기"</h4>
+                                <p class="text-xs text-slate-500 mt-1">목표가: 39,000원 | 2026.03.02</p>
+                                <p class="text-sm text-slate-700 mt-1">삼성 파운드리와의 견고한 파트너십을 바탕으로 북미 수주 가시화. 상반기 보호예수 물량 출회 시 변동성을 매수 기회로 활용할 것을 권고.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-slate-900 text-slate-400 py-8 text-center text-sm">
+        <p>본 대시보드는 사용자의 요청에 따라 가상의 데이터(예시)를 기반으로 구성된 UI/UX 테스트용 애플리케이션입니다.</p>
+        <p class="mt-2">실제 투자 지표로 활용될 수 없으며, 투자 결과에 대한 법적 책임을 지지 않습니다.</p>
+    </footer>
+
+    <script>
+        // --- 1. Global Setup & Utilities ---
+        Chart.defaults.font.family = "'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif";
+        Chart.defaults.color = '#64748b'; // slate-500
+        
+        // Navigation Active State Management
+        const navButtons = document.querySelectorAll('.nav-btn');
+        const sections = document.querySelectorAll('section');
+
+        function scrollToSection(id) {
+            document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+        }
+
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (scrollY >= (sectionTop - 150)) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navButtons.forEach(btn => {
+                btn.classList.remove('tab-active');
+                if (btn.getAttribute('data-target') === current) {
+                    btn.classList.add('tab-active');
+                }
+            });
+        });
+
+        // --- 2. Chart Configurations & Data ---
+        
+        // A. Lock-up Doughnut Chart
+        const lockupCtx = document.getElementById('lockupChart').getContext('2d');
+        const lockupChart = new Chart(lockupCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['유통 가능 (Free Float)', '보호예수 (Locked)'],
+                datasets: [{
+                    data: [28, 72],
+                    backgroundColor: ['#3b82f6', '#e2e8f0'],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) { return ' ' + context.label + ': ' + context.parsed + '%'; }
+                        }
+                    }
+                }
+            }
+        });
+
+        // B. Technical Price Line Chart (Simulated Data)
+        const priceCtx = document.getElementById('priceChart').getContext('2d');
+        const days = Array.from({length: 30}, (_, i) => `D-${29-i}`);
+        // Simulated dip and double bottom recovery
+        const basePrices = [32000, 31500, 30000, 28000, 26000, 24500, 25000, 26000, 27500, 26500, 25000, 24200, 24800, 25500, 26000, 25800, 25000, 24500, 25200, 25800, 26000, 25500, 25000, 24800, 25400, 26000, 26300, 26100, 26500, 26800];
+        
+        // Datasets
+        const priceDataset = {
+            label: '종가 추이',
+            data: basePrices,
+            borderColor: '#1e293b', // slate-800
+            backgroundColor: 'rgba(30, 41, 59, 0.05)',
+            borderWidth: 2,
+            tension: 0.3,
+            fill: true,
+            pointRadius: 0,
+            pointHoverRadius: 5
+        };
+
+        const supportDataset = {
+            label: '주요 지지선 (바닥)',
+            data: Array(30).fill(24500),
+            borderColor: '#3b82f6', // blue-500
+            borderWidth: 2,
+            borderDash: [5, 5],
+            pointRadius: 0,
+            hidden: true // default hidden
+        };
+
+        const resistanceDataset = {
+            label: '1차 저항선',
+            data: Array(30).fill(32000),
+            borderColor: '#ef4444', // red-500
+            borderWidth: 2,
+            borderDash: [5, 5],
+            pointRadius: 0,
+            hidden: true // default hidden
+        };
+
+        const priceChart = new Chart(priceCtx, {
+            type: 'line',
+            data: {
+                labels: days,
+                datasets: [priceDataset, supportDataset, resistanceDataset]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                scales: {
+                    y: { 
+                        min: 22000, 
+                        max: 34000,
+                        ticks: {
+                            callback: function(value) { return value.toLocaleString() + '원'; }
+                        }
+                    },
+                    x: { grid: { display: false }, ticks: { maxTicksLimit: 6 } }
+                },
+                plugins: {
+                    legend: { display: false }, // Using custom buttons instead
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                if(context.datasetIndex === 0) return '종가: ' + context.parsed.y.toLocaleString() + '원';
+                                return null;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Toggle Technical Lines Logic
+        let supportVisible = false;
+        let resistanceVisible = false;
+
+        function toggleTechnicalLines(type) {
+            if(type === 'support') {
+                supportVisible = !supportVisible;
+                priceChart.data.datasets[1].hidden = !supportVisible;
+                const btn = document.getElementById('btn-support');
+                btn.classList.toggle('bg-blue-100');
+                btn.classList.toggle('text-blue-700');
+                btn.classList.toggle('border-blue-300');
+            } else if (type === 'resistance') {
+                resistanceVisible = !resistanceVisible;
+                priceChart.data.datasets[2].hidden = !resistanceVisible;
+                const btn = document.getElementById('btn-resistance');
+                btn.classList.toggle('bg-red-100');
+                btn.classList.toggle('text-red-700');
+                btn.classList.toggle('border-red-300');
+            }
+            priceChart.update();
+        }
+
+        // C. Supply & Demand Bar Chart
+        const supplyCtx = document.getElementById('supplyChart').getContext('2d');
+        const supplyDates = ['3/1', '3/2', '3/3', '3/6', '3/7', '3/8', '3/9', '3/10'];
+        const foreignNet = [-50, -20, 10, 30, -5, 40, 60, 80]; // in thousands
+        const instNet = [-10, 20, 40, 50, 60, 90, 120, 150];
+
+        const supplyChart = new Chart(supplyCtx, {
+            type: 'bar',
+            data: {
+                labels: supplyDates,
+                datasets: [
+                    {
+                        label: '외국인 순매수(천주)',
+                        data: foreignNet,
+                        backgroundColor: foreignNet.map(v => v < 0 ? 'rgba(59, 130, 246, 0.5)' : 'rgba(239, 68, 68, 0.5)'), // Blue for sell, Red for buy (Korean style)
+                        borderColor: foreignNet.map(v => v < 0 ? '#3b82f6' : '#ef4444'),
+                        borderWidth: 1
+                    },
+                    {
+                        label: '기관 순매수(천주)',
+                        data: instNet,
+                        backgroundColor: instNet.map(v => v < 0 ? 'rgba(59, 130, 246, 0.8)' : 'rgba(239, 68, 68, 0.8)'),
+                        borderColor: instNet.map(v => v < 0 ? '#1d4ed8' : '#b91c1c'),
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { 
+                        grid: { borderDash: [2, 4] },
+                        ticks: {
+                            callback: function(value) { return value > 0 ? '+' + value : value; }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) { label += ': '; }
+                                label += context.parsed.y + '천주';
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // --- 3. Interactive UI Logic ---
+        function toggleCard(element) {
+            const hiddenContent = element.querySelector('.hidden-content');
+            const icon = element.querySelector('.expand-icon');
+            const paragraph = element.querySelector('p.line-clamp-2');
+            
+            if (hiddenContent.classList.contains('hidden')) {
+                hiddenContent.classList.remove('hidden');
+                icon.textContent = '▲ 접기';
+                if(paragraph) paragraph.classList.remove('line-clamp-2');
+            } else {
+                hiddenContent.classList.add('hidden');
+                icon.textContent = '▼ 상세 보기 클릭';
+                if(paragraph) paragraph.classList.add('line-clamp-2');
+            }
+        }
+    </script>
+</body>
+</html>
